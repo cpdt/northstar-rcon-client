@@ -1,0 +1,14 @@
+[package]
+name = "northstar-rcon-cli"
+version = "0.1.0"
+edition = "2021"
+description = "A small, portable RCON client for the Northstar mod."
+
+[dependencies]
+clap = { version = "3.2", features = ["derive"] }
+log = "0.4"
+northstar-rcon-client = { path = "../northstar-rcon-client" }
+rpassword = "7.0"
+simplelog = "0.12"
+tokio = { version = "1.20", features = ["macros", "rt", "io-util", "io-std"] }
+ansi_term = "0.12"

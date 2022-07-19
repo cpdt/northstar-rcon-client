@@ -1,0 +1,11 @@
+[package]
+name = "northstar-rcon-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+protobuf = "3.1"
+tokio = { version = "1.20", features = ["net", "io-util"] }
+
+[build-dependencies]
+protobuf-codegen = "3.1"

@@ -8,10 +8,13 @@ jobs:
         include:
           - os: ubuntu-latest
             suffix: ''
+            strip: true
           - os: windows-latest
             suffix: .exe
+            strip: false
           - os: macos-latest
             suffix: ''
+            strip: true
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -19,6 +22,8 @@ jobs:
         with:
           toolchain: stable
       - run: cargo build --bin northstar-rcon-cli --release
+      - run: strip target/release/northstar-rcon-cli${{ matrix.suffix }}
+        if: ${{ matrix.strip }}
       - uses: actions/upload-artifact@v3
         with:
           name: northstar-rcon-cli-${{ matrix.os }}

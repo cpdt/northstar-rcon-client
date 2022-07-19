@@ -33,9 +33,10 @@ Once connected, any command will be sent and run on the server. There are also s
 interpreted by the client:
 
 ```
-BUILTINS
+BUILTINS:
     !help                View this help listing
     !enable console      Enable server console logging
+    !quit                Quit this session
     !set <VAR> <VAL>     Set a ConVar on the server
     <COMMAND> [ARGS...]  Run a command on the server
 ```

@@ -138,9 +138,10 @@ async fn repl_loop(mut client_write: ClientWrite, prompt: Prompt) -> ! {
                     env!("CARGO_PKG_VERSION")
                 );
                 println!();
-                println!("{}", Yellow.paint("BUILTINS"));
+                println!("{}", Yellow.paint("BUILTINS:"));
                 println!("    !help                View this help listing");
                 println!("    !enable console      Enable server console logging");
+                println!("    !quit                Quit this session");
                 println!(
                     "    !set {}     Set a ConVar on the server",
                     Green.paint("<VAR> <VAL>")
@@ -153,6 +154,8 @@ async fn repl_loop(mut client_write: ClientWrite, prompt: Prompt) -> ! {
                 Ok(())
             } else if builtin == "enable console" {
                 client_write.enable_console_logs().await
+            } else if builtin == "quit" {
+                std::process::exit(0);
             } else if let Some(set_query) = builtin.strip_prefix("set ") {
                 client_write.set_value(set_query.trim()).await
             } else {

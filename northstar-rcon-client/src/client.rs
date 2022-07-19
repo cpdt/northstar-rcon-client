@@ -1,6 +1,6 @@
-use tokio::net::{TcpStream, ToSocketAddrs};
 use crate::inner_client;
 use crate::inner_client::{InnerClientRead, InnerClientWrite, Request, Response};
+use tokio::net::{TcpStream, ToSocketAddrs};
 
 pub struct NotAuthenticatedClient {
     read: InnerClientRead,
@@ -33,17 +33,24 @@ impl NotAuthenticatedClient {
         })
     }
 
-    pub async fn authenticate(mut self, pass: &str) -> Result<(ClientRead, ClientWrite), (NotAuthenticatedClient, AuthError)> {
+    pub async fn authenticate(
+        mut self,
+        pass: &str,
+    ) -> Result<(ClientRead, ClientWrite), (NotAuthenticatedClient, AuthError)> {
         if let Err(err) = self.write.send(Request::Auth { pass }).await {
-            return Err((self, AuthError::Fatal(err)))
+            return Err((self, AuthError::Fatal(err)));
         }
 
         // Wait until a successful authentication response is received
         loop {
             match self.read.receive().await {
                 Ok(Response::Auth { res: Ok(()) }) => break,
-                Ok(Response::Auth { res: Err(inner_client::AuthError::InvalidPassword) }) => return Err((self, AuthError::InvalidPassword)),
-                Ok(Response::Auth { res: Err(inner_client::AuthError::Banned) }) => return Err((self, AuthError::Banned)),
+                Ok(Response::Auth {
+                    res: Err(inner_client::AuthError::InvalidPassword),
+                }) => return Err((self, AuthError::InvalidPassword)),
+                Ok(Response::Auth {
+                    res: Err(inner_client::AuthError::Banned),
+                }) => return Err((self, AuthError::Banned)),
                 Ok(_) => {
                     // todo: log message indicating something was skipped?
                     continue;

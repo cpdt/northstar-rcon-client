@@ -1,13 +1,13 @@
+use ansi_term::Colour::{Fixed, Green, Yellow};
+use clap::Parser;
+use log::{error, info, LevelFilter};
+use northstar_rcon_client::{AuthError, ClientRead, ClientWrite, NotAuthenticatedClient};
+use rpassword::read_password;
+use simplelog::{ColorChoice, Config, TermLogger, TerminalMode};
 use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::net::{IpAddr, SocketAddr};
-use clap::Parser;
-use log::{error, info, LevelFilter};
-use rpassword::read_password;
-use simplelog::{ColorChoice, Config, TerminalMode, TermLogger};
 use tokio::io::{AsyncBufReadExt, BufReader};
-use northstar_rcon_client::{AuthError, ClientRead, ClientWrite, NotAuthenticatedClient};
-use ansi_term::Colour::{Fixed, Green, Yellow};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -18,7 +18,13 @@ struct Args {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ! {
-    TermLogger::init(LevelFilter::Info, Config::default(), TerminalMode::Mixed, ColorChoice::Auto).unwrap();
+    TermLogger::init(
+        LevelFilter::Info,
+        Config::default(),
+        TerminalMode::Mixed,
+        ColorChoice::Auto,
+    )
+    .unwrap();
 
     let args = Args::parse();
 
@@ -67,11 +73,13 @@ async fn main() -> ! {
         };
     };
 
-    info!("Connected. View builtins with `!help`. {} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    info!(
+        "Connected. View builtins with `!help`. {} {}",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    );
 
-    let prompt = Prompt {
-        socket_addr
-    };
+    let prompt = Prompt { socket_addr };
 
     // Start logging incoming lines
     tokio::spawn(log_loop(client_read, prompt.clone()));
@@ -99,7 +107,7 @@ async fn log_loop(mut client_read: ClientRead, prompt: Prompt) -> ! {
                 info!("{}", log);
                 print!("{}", prompt);
                 std::io::stdout().flush().unwrap();
-            },
+            }
             Err(err) => {
                 eprint!("\r");
                 error!("Connection closed: {}", err);
@@ -124,13 +132,23 @@ async fn repl_loop(mut client_write: ClientWrite, prompt: Prompt) -> ! {
 
         let result = if let Some(builtin) = line.strip_prefix('!') {
             if builtin == "help" {
-                println!("{} {}", Green.paint(env!("CARGO_PKG_NAME")), env!("CARGO_PKG_VERSION"));
+                println!(
+                    "{} {}",
+                    Green.paint(env!("CARGO_PKG_NAME")),
+                    env!("CARGO_PKG_VERSION")
+                );
                 println!();
                 println!("{}", Yellow.paint("BUILTINS"));
                 println!("    !help                View this help listing");
                 println!("    !enable console      Enable server console logging");
-                println!("    !set {}     Set a ConVar on the server", Green.paint("<VAR> <VAL>"));
-                println!("    {}  Run a command on the server", Green.paint("<COMMAND> [ARGS...]"));
+                println!(
+                    "    !set {}     Set a ConVar on the server",
+                    Green.paint("<VAR> <VAL>")
+                );
+                println!(
+                    "    {}  Run a command on the server",
+                    Green.paint("<COMMAND> [ARGS...]")
+                );
 
                 Ok(())
             } else if builtin == "enable console" {

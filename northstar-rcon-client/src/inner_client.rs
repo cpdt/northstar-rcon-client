@@ -1,32 +1,22 @@
+use protobuf::Message;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use protobuf::Message;
 
 const READ_CHUNK_LEN: usize = 4096;
-const TERMINATOR: u8 = '\r' as u8;
+const TERMINATOR: u8 = b'\r';
 
 #[derive(Debug, Clone, Copy)]
 pub enum Request<'a> {
-    Auth {
-        pass: &'a str,
-    },
-    SetValue {
-        cmd: &'a str,
-    },
-    ExecCommand {
-        cmd: &'a str,
-    },
+    Auth { pass: &'a str },
+    SetValue { cmd: &'a str },
+    ExecCommand { cmd: &'a str },
     EnableConsoleLogs,
 }
 
 #[derive(Debug)]
 pub enum Response {
-    Auth {
-        res: Result<(), AuthError>,
-    },
-    ConsoleLog {
-        msg: String,
-    }
+    Auth { res: Result<(), AuthError> },
+    ConsoleLog { msg: String },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,10 +43,11 @@ impl InnerClientWrite {
 
     pub async fn send(&mut self, request: Request<'_>) -> crate::Result<()> {
         let mut buf: Vec<u8> = Vec::new();
-        crate::protocol::Request::from(request).write_to(&mut protobuf::CodedOutputStream::new(&mut buf))?;
+        crate::protocol::Request::from(request)
+            .write_to(&mut protobuf::CodedOutputStream::new(&mut buf))?;
         buf.push(TERMINATOR);
 
-        self.write.write(&buf).await?;
+        self.write.write_all(&buf).await?;
         Ok(())
     }
 }
@@ -74,7 +65,11 @@ impl InnerClientRead {
     pub async fn receive(&mut self) -> crate::Result<Response> {
         loop {
             // Pull any queued responses from the receive buffer
-            while let Some(buffer_len_offset) = self.buffer[self.read_offset + self.terminator_offset..].iter().position(|val| *val == TERMINATOR) {
+            while let Some(buffer_len_offset) = self.buffer
+                [self.read_offset + self.terminator_offset..]
+                .iter()
+                .position(|val| *val == TERMINATOR)
+            {
                 let buffer_len = self.terminator_offset + buffer_len_offset;
                 let buffer_offset = self.read_offset;
 
@@ -84,7 +79,9 @@ impl InnerClientRead {
                 }
 
                 let response_buffer = &self.buffer[buffer_offset..buffer_offset + buffer_len];
-                let proto_response = match crate::protocol::Response::parse_from(&mut protobuf::CodedInputStream::from_bytes(response_buffer)) {
+                let proto_response = match crate::protocol::Response::parse_from(
+                    &mut protobuf::CodedInputStream::from_bytes(response_buffer),
+                ) {
                     Ok(res) => res,
                     Err(_) => {
                         // This might indicate the terminator was inside the response, and wasn't
@@ -126,10 +123,26 @@ impl InnerClientRead {
 impl From<Request<'_>> for crate::protocol::Request {
     fn from(request: Request<'_>) -> Self {
         let (request_type, request_buf, request_val) = match request {
-            Request::Auth { pass, .. } => (crate::protocol::Request_t::SERVERDATA_REQUEST_AUTH, Some(pass.to_string()), None),
-            Request::SetValue { cmd, .. } => (crate::protocol::Request_t::SERVERDATA_REQUEST_SETVALUE, Some("SET".to_string()), Some(cmd.to_string())),
-            Request::ExecCommand { cmd, .. } => (crate::protocol::Request_t::SERVERDATA_REQUEST_EXECCOMMAND, Some(cmd.to_string()), None),
-            Request::EnableConsoleLogs => (crate::protocol::Request_t::SERVERDATA_REQUEST_SEND_REMOTEBUG, None, None),
+            Request::Auth { pass, .. } => (
+                crate::protocol::Request_t::SERVERDATA_REQUEST_AUTH,
+                Some(pass.to_string()),
+                None,
+            ),
+            Request::SetValue { cmd, .. } => (
+                crate::protocol::Request_t::SERVERDATA_REQUEST_SETVALUE,
+                Some("SET".to_string()),
+                Some(cmd.to_string()),
+            ),
+            Request::ExecCommand { cmd, .. } => (
+                crate::protocol::Request_t::SERVERDATA_REQUEST_EXECCOMMAND,
+                Some(cmd.to_string()),
+                None,
+            ),
+            Request::EnableConsoleLogs => (
+                crate::protocol::Request_t::SERVERDATA_REQUEST_SEND_REMOTEBUG,
+                None,
+                None,
+            ),
         };
 
         crate::protocol::Request {
@@ -146,10 +159,7 @@ impl TryFrom<crate::protocol::Response> for Response {
     type Error = ();
 
     fn try_from(value: crate::protocol::Response) -> Result<Self, Self::Error> {
-        let proto_response_type = value.responseType
-            .ok_or(())?
-            .enum_value()
-            .map_err(|_| ())?;
+        let proto_response_type = value.responseType.ok_or(())?.enum_value().map_err(|_| ())?;
 
         match proto_response_type {
             crate::protocol::Response_t::SERVERDATA_RESPONSE_AUTH => {
@@ -166,7 +176,7 @@ impl TryFrom<crate::protocol::Response> for Response {
             }
             crate::protocol::Response_t::SERVERDATA_RESPONSE_CONSOLE_LOG => {
                 Ok(Response::ConsoleLog {
-                    msg: value.responseBuf.ok_or(())?
+                    msg: value.responseBuf.ok_or(())?,
                 })
             }
 

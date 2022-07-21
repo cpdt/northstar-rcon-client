@@ -192,7 +192,7 @@ async fn repl_loop(
                 Ok(())
             }
         } else {
-            client_write.exec_command(&line).await
+            client_write.exec_command(line).await
         };
 
         if let Err(err) = result {

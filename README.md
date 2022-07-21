@@ -12,14 +12,17 @@ There are two things in this repo:
 
 ```
 USAGE:
-    northstar-rcon-cli <ADDRESS>
+    northstar-rcon-cli.exe [OPTIONS] <ADDRESS>
 
 ARGS:
     <ADDRESS>    Address of the Northstar server, e.g. `127.0.0.1:37015`
 
 OPTIONS:
-    -h, --help       Print help information
-    -V, --version    Print version information
+    -h, --help                     Print help information
+    -n, --name <NAME>              Name to display for the server in the prompt
+    -p, --pass-file <PASS_FILE>    Authenticate automatically with a password in a file
+        --script-mode              Force non-interactive script mode, even in interactive terminals
+    -V, --version                  Print version information
 ```
 
 Make sure you have RCON running on a dedicated server, as per the instructions in
@@ -34,11 +37,11 @@ interpreted by the client:
 
 ```
 BUILTINS:
-    !help                View this help listing
-    !enable console      Enable server console logging
-    !quit                Quit this session
-    !set <VAR> <VAL>     Set a ConVar on the server
-    <COMMAND> [ARGS...]  Run a command on the server
+    !help                   View this help listing
+    !enable console         Enable server console logging
+    !quit                   Quit this session
+    !set <VAR> <VAL>        Set a ConVar on the server
+    <COMMAND> [ARGS...]     Run a command on the server
 ```
 
 Logs sent from the server will be printed on the client. This is disabled by default on the server, but can be enabled

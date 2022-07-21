@@ -22,6 +22,10 @@ struct Args {
     /// Authenticate automatically with a password in a file.
     #[clap(short, long)]
     pass_file: Option<String>,
+
+    /// Force non-interactive script mode, even in interactive terminals.
+    #[clap(long)]
+    script_mode: bool,
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -86,7 +90,7 @@ async fn main() {
         },
     };
 
-    let (shell_read, shell_write) = new_shell(format!("{}> ", name));
+    let (shell_read, shell_write) = new_shell(format!("{}> ", name), args.script_mode);
 
     select! {
         // Start logging incoming lines

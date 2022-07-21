@@ -23,8 +23,8 @@ enum ShellWriteInner {
     Stream(Stdout, Stderr),
 }
 
-pub fn new_shell(prompt: String) -> (ShellRead, ShellWrite) {
-    if std::io::stdout().is_tty() {
+pub fn new_shell(prompt: String, disable_interactive: bool) -> (ShellRead, ShellWrite) {
+    if !disable_interactive && std::io::stdout().is_tty() {
         let (read_line, writer) = Readline::new(prompt.clone()).unwrap();
         (
             ShellRead {

@@ -194,7 +194,7 @@ async fn repl_loop(
                         client_write.set_value(var, val).await
                     }
                     None => {
-                        writeln!(stdout.err(), "Usage: <VAR> <VAL>").unwrap();
+                        writeln!(stdout.err(), "Usage: !set <VAR> <VAL>").unwrap();
                         Ok(())
                     }
                 }

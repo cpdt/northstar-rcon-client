@@ -8,7 +8,7 @@ const TERMINATOR: u8 = b'\r';
 #[derive(Debug, Clone, Copy)]
 pub enum Request<'a> {
     Auth { pass: &'a str },
-    SetValue { cmd: &'a str },
+    SetValue { var: &'a str, val: &'a str },
     ExecCommand { cmd: &'a str },
     EnableConsoleLogs,
 }
@@ -128,10 +128,10 @@ impl From<Request<'_>> for crate::protocol::Request {
                 Some(pass.to_string()),
                 None,
             ),
-            Request::SetValue { cmd, .. } => (
+            Request::SetValue { var, val, .. } => (
                 crate::protocol::Request_t::SERVERDATA_REQUEST_SETVALUE,
-                Some("SET".to_string()),
-                Some(cmd.to_string()),
+                Some(var.to_string()),
+                Some(val.to_string()),
             ),
             Request::ExecCommand { cmd, .. } => (
                 crate::protocol::Request_t::SERVERDATA_REQUEST_EXECCOMMAND,
@@ -139,7 +139,7 @@ impl From<Request<'_>> for crate::protocol::Request {
                 None,
             ),
             Request::EnableConsoleLogs => (
-                crate::protocol::Request_t::SERVERDATA_REQUEST_SEND_REMOTEBUG,
+                crate::protocol::Request_t::SERVERDATA_REQUEST_SEND_CONSOLE_LOG,
                 None,
                 None,
             ),

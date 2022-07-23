@@ -58,7 +58,7 @@ async fn main() {
     let mut client = match NotAuthenticatedClient::new(socket_addr).await {
         Ok(client) => client,
         Err(err) => {
-            eprintln!("{} connection failed: {}", name, err);
+            eprintln!("Connection failed: {}", err);
             proc_exit::Code::SERVICE_UNAVAILABLE.process_exit();
         }
     };
@@ -67,7 +67,7 @@ async fn main() {
         Some(pass) => match client.authenticate(pass).await {
             Ok(halves) => halves,
             Err((_, err)) => {
-                eprintln!("{} authentication failed: {}", name, CliAuthError(err));
+                eprintln!("Authentication failed: {}", CliAuthError(err));
                 proc_exit::Code::SERVICE_UNAVAILABLE.process_exit();
             }
         },
@@ -94,7 +94,7 @@ async fn main() {
 
     select! {
         // Start logging incoming lines
-        _ = log_loop(client_read, shell_write.clone(), name) => {},
+        _ = log_loop(client_read, shell_write.clone()) => {},
 
         // Start receiving REPL inputs
         _ = repl_loop(client_write, shell_read, shell_write) => {},
@@ -138,12 +138,12 @@ impl Display for CliAuthError {
     }
 }
 
-async fn log_loop(mut client_read: ClientRead, mut stdout: ShellWrite, name: String) -> ! {
+async fn log_loop(mut client_read: ClientRead, mut stdout: ShellWrite) -> ! {
     loop {
         match client_read.receive_console_log().await {
             Ok(log) => writeln!(stdout.out(), "{}", log).unwrap(),
             Err(err) => {
-                writeln!(stdout.err(), "{} connection closed: {}", name, err).unwrap();
+                eprintln!("Connection closed: {}", err);
                 proc_exit::Code::SERVICE_UNAVAILABLE.process_exit();
             }
         }
@@ -184,9 +184,20 @@ async fn repl_loop(
             } else if builtin == "enable console" {
                 client_write.enable_console_logs().await
             } else if builtin == "quit" {
+                eprintln!();
                 proc_exit::Code::SUCCESS.process_exit();
             } else if let Some(set_query) = builtin.strip_prefix("set ") {
-                client_write.set_value(set_query.trim()).await
+                match set_query.find(' ') {
+                    Some(separator_index) => {
+                        let var = set_query[..separator_index].trim();
+                        let val = set_query[separator_index + 1..].trim();
+                        client_write.set_value(var, val).await
+                    }
+                    None => {
+                        writeln!(stdout.err(), "Usage: <VAR> <VAL>").unwrap();
+                        Ok(())
+                    }
+                }
             } else {
                 writeln!(stdout.err(), "Unknown builtin.").unwrap();
                 Ok(())

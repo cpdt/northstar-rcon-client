@@ -67,8 +67,8 @@ impl NotAuthenticatedClient {
 }
 
 impl ClientWrite {
-    pub async fn set_value(&mut self, cmd: &str) -> crate::Result<()> {
-        self.write.send(Request::SetValue { cmd }).await
+    pub async fn set_value(&mut self, var: &str, val: &str) -> crate::Result<()> {
+        self.write.send(Request::SetValue { var, val }).await
     }
 
     pub async fn exec_command(&mut self, cmd: &str) -> crate::Result<()> {

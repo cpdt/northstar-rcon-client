@@ -22,16 +22,20 @@ The client is entirely asynchronous and requires a [Tokio](https://tokio.rs/) ru
 ## Example
 ```rust
 use northstar_rcon_client::connect;
+
 #[tokio::main]
 async fn main() {
     let client = connect("localhost:37015")
         .await
         .unwrap();
+    
     let (mut read, mut write) = client.authenticate("password123")
         .await
         .unwrap();
+    
     write.enable_console_logs().await.unwrap();
     write.exec_command("status").await.unwrap();
+    
     loop {
         let line = read.receive_console_log().await.unwrap();
         println!("> {}", line);

@@ -1,12 +1,28 @@
 # Northstar RCON Client
 
+[![MIT licensed][mit-badge]][mit-url]
+[![Build status][build-badge]][build-url]
+[![Lint status][lint-badge]][lint-url]
+
+[mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[mit-url]: https://github.com/cpdt/northstar-rcon-client/blob/master/LICENSE
+[build-badge]: https://github.com/cpdt/northstar-rcon-client/workflows/Build/badge.svg
+[build-url]: https://github.com/cpdt/northstar-rcon-client/actions?query=workflow%3ABuild+branch%3Amain
+[lint-badge]: https://github.com/cpdt/northstar-rcon-client/workflows/Lint/badge.svg
+[lint-url]: https://github.com/cpdt/northstar-rcon-client/actions?query=workflow%3ALint+branch%3Amain
+
 This is a small, cross-platform implementation of an RCON client for [the Northstar mod](https://northstar.tf/), as it's
 implemented in the [RCON PR](https://github.com/R2Northstar/NorthstarLauncher/pull/100).
 
 There are two things in this repo:
 
- - `northstar-rcon-client`, a Rust library that provides an async RCON client with [Tokio](https://tokio.rs/). (docs soon)
+ - `northstar-rcon-client`, a Rust library that provides an async RCON client with [Tokio](https://tokio.rs/). [![Crates.io][crates-badge]][crates-url] [![Docs.rs][docs-badge]][docs-url]
  - `northstar-rcon-cli`, a portable command-line RCON client implemented with the library.
+
+[crates-badge]: https://img.shields.io/crates/v/northstar-rcon-client.svg
+[crates-url]: https://crates.io/crates/northstar-rcon-client
+[docs-badge]: https://img.shields.io/docsrs/northstar-rcon-client
+[docs-url]: https://docs.rs/northstar-rcon-client/latest/northstar-rcon-client
 
 ## Usage
 

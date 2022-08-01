@@ -25,10 +25,12 @@ pub enum AuthError {
     Banned,
 }
 
+#[derive(Debug)]
 pub struct InnerClientWrite {
     write: OwnedWriteHalf,
 }
 
+#[derive(Debug)]
 pub struct InnerClientRead {
     read: OwnedReadHalf,
     buffer: Vec<u8>,

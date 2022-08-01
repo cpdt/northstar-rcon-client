@@ -1,7 +1,7 @@
 use crate::shell::{new_shell, ShellRead, ShellWrite};
 use clap::Parser;
 use crossterm::style::{Color, Stylize};
-use northstar_rcon_client::{AuthError, ClientRead, ClientWrite, NotAuthenticatedClient};
+use northstar_rcon_client::{connect, AuthError, ClientRead, ClientWrite};
 use rpassword::prompt_password;
 use std::fmt::{Display, Formatter};
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -55,7 +55,7 @@ async fn main() {
 
     let name = args.name.unwrap_or_else(|| socket_addr.to_string());
 
-    let mut client = match NotAuthenticatedClient::new(socket_addr).await {
+    let mut client = match connect(socket_addr).await {
         Ok(client) => client,
         Err(err) => {
             eprintln!("Connection failed: {}", err);

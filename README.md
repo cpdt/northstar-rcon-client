@@ -24,6 +24,10 @@ There are two things in this repo:
 [docs-badge]: https://img.shields.io/docsrs/northstar-rcon-client
 [docs-url]: https://docs.rs/northstar-rcon-client/latest/northstar_rcon_client/
 
+## Installation
+
+Download the latest build for your operating system from the [Releases page](https://github.com/cpdt/northstar-rcon-client/releases).
+
 ## Usage
 
 ```

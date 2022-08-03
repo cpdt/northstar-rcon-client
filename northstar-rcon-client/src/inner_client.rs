@@ -1,9 +1,9 @@
 use protobuf::Message;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use std::fmt::Write;
 
 const READ_CHUNK_LEN: usize = 4096;
-const TERMINATOR: u8 = b'\r';
 
 #[derive(Debug, Clone, Copy)]
 pub enum Request<'a> {
@@ -35,7 +35,6 @@ pub struct InnerClientRead {
     read: OwnedReadHalf,
     buffer: Vec<u8>,
     read_offset: usize,
-    terminator_offset: usize,
 }
 
 impl InnerClientWrite {
@@ -45,9 +44,22 @@ impl InnerClientWrite {
 
     pub async fn send(&mut self, request: Request<'_>) -> crate::Result<()> {
         let mut buf: Vec<u8> = Vec::new();
+
+        // Insert a placeholder for the buffer length
+        buf.extend_from_slice(&0u32.to_be_bytes());
+
+        // Encode data into the buffer
         crate::protocol::Request::from(request)
             .write_to(&mut protobuf::CodedOutputStream::new(&mut buf))?;
-        buf.push(TERMINATOR);
+
+        // Set the buffer length to the actual value
+        let len_bytes = ((buf.len() - std::mem::size_of::<u32>()) as u32).to_be_bytes();
+        buf[..std::mem::size_of::<u32>()].copy_from_slice(&len_bytes);
+
+        let mut log_txt = "".to_string();
+        for byte in &buf {
+            write!(log_txt, "{:02X} ", byte).unwrap();
+        }
 
         self.write.write_all(&buf).await?;
         Ok(())
@@ -60,44 +72,23 @@ impl InnerClientRead {
             read,
             buffer: Vec::new(),
             read_offset: 0,
-            terminator_offset: 0,
         }
     }
 
     pub async fn receive(&mut self) -> crate::Result<Response> {
+        // Repeatedly fetch data from the remote until we have a response
         loop {
             // Pull any queued responses from the receive buffer
-            while let Some(buffer_len_offset) = self.buffer
-                [self.read_offset + self.terminator_offset..]
-                .iter()
-                .position(|val| *val == TERMINATOR)
+            while let Some((response_buffer, remaining_buffer)) =
+                get_message_from_slice(&self.buffer[self.read_offset..])
             {
-                let buffer_len = self.terminator_offset + buffer_len_offset;
-                let buffer_offset = self.read_offset;
+                // Consume the bytes
+                self.read_offset = self.buffer.len() - remaining_buffer.len();
 
-                if buffer_len == 0 {
-                    self.read_offset += 1;
-                    continue;
-                }
-
-                let response_buffer = &self.buffer[buffer_offset..buffer_offset + buffer_len];
-                let proto_response = match crate::protocol::Response::parse_from(
+                // Parse and return the response
+                let proto_response = crate::protocol::Response::parse_from(
                     &mut protobuf::CodedInputStream::from_bytes(response_buffer),
-                ) {
-                    Ok(res) => res,
-                    Err(_) => {
-                        // This might indicate the terminator was inside the response, and wasn't
-                        // the actual indicator of the end of the response. To handle this, keep
-                        // searching until it works.
-                        self.terminator_offset += buffer_len_offset + 1;
-                        continue;
-                    }
-                };
-
-                // Consume the bytes and the terminator
-                self.read_offset += buffer_len + 1;
-                self.terminator_offset = 0;
-
+                )?;
                 match Response::try_from(proto_response) {
                     Ok(res) => return Ok(res),
                     Err(()) => continue,
@@ -191,4 +182,23 @@ impl TryFrom<crate::protocol::Response> for Response {
             }
         }
     }
+}
+
+// Expects a slice starting with a 32-bit length in big endian order.
+// Returns a slice containing that number of bytes after the length, and a slice containing
+// everything after the length.
+// Returns none if not enough data is provided.
+fn get_message_from_slice(slice: &[u8]) -> Option<(&[u8], &[u8])> {
+    if slice.len() < 4 {
+        return None;
+    }
+
+    let (len_bytes, remaining_bytes) = slice.split_at(std::mem::size_of::<u32>());
+
+    let len = u32::from_be_bytes(len_bytes.try_into().unwrap());
+    if remaining_bytes.len() < std::mem::size_of::<u32>() {
+        return None;
+    }
+
+    Some(remaining_bytes.split_at(len as usize))
 }

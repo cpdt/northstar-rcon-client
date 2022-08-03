@@ -1,8 +1,10 @@
 [package]
 name = "northstar-rcon-cli"
+description = "A small, portable RCON client for the Northstar mod."
 version = "0.2.0"
 edition = "2021"
-description = "A small, portable RCON client for the Northstar mod."
+license = "MIT"
+repository = "https://github.com/cpdt/northstar-rcon-client"
 
 [dependencies]
 clap = { version = "3.2", features = ["derive"] }

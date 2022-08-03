@@ -4,6 +4,7 @@ description = "Asynchronous RCON client for the Northstar mod"
 version = "0.2.0"
 edition = "2021"
 license = "MIT"
+repository = "https://github.com/cpdt/northstar-rcon-client/tree/main/northstar-rcon-client"
 
 [dependencies]
 protobuf = "3.1"

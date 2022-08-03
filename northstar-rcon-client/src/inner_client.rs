@@ -1,7 +1,6 @@
 use protobuf::Message;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use std::fmt::Write;
 
 const READ_CHUNK_LEN: usize = 4096;
 
@@ -55,11 +54,6 @@ impl InnerClientWrite {
         // Set the buffer length to the actual value
         let len_bytes = ((buf.len() - std::mem::size_of::<u32>()) as u32).to_be_bytes();
         buf[..std::mem::size_of::<u32>()].copy_from_slice(&len_bytes);
-
-        let mut log_txt = "".to_string();
-        for byte in &buf {
-            write!(log_txt, "{:02X} ", byte).unwrap();
-        }
 
         self.write.write_all(&buf).await?;
         Ok(())

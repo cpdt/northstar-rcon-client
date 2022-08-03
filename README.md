@@ -22,7 +22,7 @@ There are two things in this repo:
 [crates-badge]: https://img.shields.io/crates/v/northstar-rcon-client.svg
 [crates-url]: https://crates.io/crates/northstar-rcon-client
 [docs-badge]: https://img.shields.io/docsrs/northstar-rcon-client
-[docs-url]: https://docs.rs/northstar-rcon-client/latest/northstar-rcon-client
+[docs-url]: https://docs.rs/northstar-rcon-client/latest/northstar_rcon_client/
 
 ## Usage
 

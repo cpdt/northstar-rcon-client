@@ -8,7 +8,7 @@
 [crates-badge]: https://img.shields.io/crates/v/northstar-rcon-client.svg
 [crates-url]: https://crates.io/crates/northstar-rcon-client
 [docs-badge]: https://img.shields.io/docsrs/northstar-rcon-client
-[docs-url]: https://docs.rs/northstar-rcon-client/latest/northstar-rcon-client
+[docs-url]: https://docs.rs/northstar-rcon-client/latest/northstar_rcon_client/
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [mit-url]: https://github.com/cpdt/northstar-rcon-client/blob/master/LICENSE
 [actions-badge]: https://github.com/cpdt/northstar-rcon-client/workflows/Build/badge.svg

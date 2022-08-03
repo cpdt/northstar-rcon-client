@@ -32,7 +32,7 @@ Download the latest build for your operating system from the [Releases page](htt
 
 ```
 USAGE:
-    northstar-rcon-cli.exe [OPTIONS] <ADDRESS>
+    nsrcon [OPTIONS] <ADDRESS>
 
 ARGS:
     <ADDRESS>    Address of the Northstar server, e.g. `127.0.0.1:37015`

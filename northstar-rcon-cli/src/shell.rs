@@ -1,7 +1,6 @@
 use crossterm::tty::IsTty;
 use rustyline_async::{Readline, ReadlineError, SharedWriter};
-use std::io::{Stderr, Stdout, Write};
-use tokio::io::{AsyncBufReadExt, BufReader, Lines};
+use std::io::{BufRead, Lines, Stderr, StdinLock, Stdout, Write};
 
 pub struct ShellRead {
     prompt: String,
@@ -15,7 +14,7 @@ pub struct ShellWrite {
 
 enum ShellReadInner {
     Interactive(Readline, SharedWriter),
-    Stream(Lines<BufReader<tokio::io::Stdin>>),
+    Stream(Lines<StdinLock<'static>>),
 }
 
 enum ShellWriteInner {
@@ -39,7 +38,7 @@ pub fn new_shell(prompt: String, disable_interactive: bool) -> (ShellRead, Shell
         (
             ShellRead {
                 prompt,
-                inner: ShellReadInner::Stream(BufReader::new(tokio::io::stdin()).lines()),
+                inner: ShellReadInner::Stream(std::io::stdin().lock().lines()),
             },
             ShellWrite {
                 inner: ShellWriteInner::Stream(std::io::stdout(), std::io::stderr()),
@@ -49,10 +48,10 @@ pub fn new_shell(prompt: String, disable_interactive: bool) -> (ShellRead, Shell
 }
 
 impl ShellRead {
-    pub async fn read_line(&mut self) -> String {
+    pub fn read_line(&mut self) -> String {
         match &mut self.inner {
             ShellReadInner::Interactive(read, writer) => {
-                let line = match read.readline().await {
+                let line = match futures::executor::block_on(read.readline()) {
                     Ok(line) => line,
                     Err(ReadlineError::IO(err)) => {
                         eprintln!("An error occurred: {}", err);
@@ -71,14 +70,14 @@ impl ShellRead {
 
                 line
             }
-            ShellReadInner::Stream(stream) => match stream.next_line().await {
-                Ok(Some(line)) => line,
-                Ok(None) => proc_exit::Code::UNKNOWN.process_exit(),
-                Err(err) => {
+            ShellReadInner::Stream(stream) => match stream.next() {
+                Some(Ok(line)) => line,
+                Some(Err(err)) => {
                     eprintln!("An error occurred: {}", err);
                     proc_exit::Code::UNKNOWN.process_exit();
                 }
-            },
+                None => proc_exit::Code::UNKNOWN.process_exit(),
+            }
         }
     }
 }

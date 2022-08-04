@@ -6,10 +6,15 @@ edition = "2021"
 license = "MIT"
 repository = "https://github.com/cpdt/northstar-rcon-client/tree/main/northstar-rcon-client"
 
+[features]
+default = ["sync"]
+sync = []
+async = ["tokio"]
+
 [dependencies]
 protobuf = "3.1"
 thiserror = "1.0"
-tokio = { version = "1.20", features = ["net", "io-util"] }
+tokio = { version = "1.20", features = ["net", "io-util"], optional = true }
 
 [build-dependencies]
 protobuf-codegen = "3.1"

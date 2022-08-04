@@ -1,11 +1,11 @@
 use crate::shell::{new_shell, ShellRead, ShellWrite};
 use clap::Parser;
 use crossterm::style::{Color, Stylize};
-use northstar_rcon_client::{connect, AuthError, ClientRead, ClientWrite};
 use rpassword::prompt_password;
 use std::fmt::{Display, Formatter};
 use std::net::{SocketAddr, ToSocketAddrs};
-use tokio::select;
+use northstar_rcon_client::{AuthError, Event, Request};
+use northstar_rcon_client::sync::{ClientRead, ClientWrite, connect};
 
 mod shell;
 
@@ -28,8 +28,7 @@ struct Args {
     script_mode: bool,
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() {
+fn main() -> ! {
     let args = Args::parse();
 
     // Try to parse address with port, if that fails try to parse without and default to 37015.
@@ -55,7 +54,7 @@ async fn main() {
 
     let name = args.name.unwrap_or_else(|| socket_addr.to_string());
 
-    let mut client = match connect(socket_addr).await {
+    let mut client = match connect(socket_addr) {
         Ok(client) => client,
         Err(err) => {
             eprintln!("Connection failed: {}", err);
@@ -64,7 +63,7 @@ async fn main() {
     };
 
     let (client_read, client_write) = match &automated_password {
-        Some(pass) => match client.authenticate(pass).await {
+        Some(pass) => match client.authenticate(pass) {
             Ok(halves) => halves,
             Err((_, err)) => {
                 eprintln!("Authentication failed: {}", CliAuthError(err));
@@ -74,7 +73,7 @@ async fn main() {
         None => loop {
             let pass = prompt_password(format!("{}'s password: ", name)).unwrap();
 
-            match client.authenticate(&pass).await {
+            match client.authenticate(&pass) {
                 Ok(halves) => break halves,
                 Err((new_client, err)) => {
                     let err = CliAuthError(err);
@@ -92,13 +91,12 @@ async fn main() {
 
     let (shell_read, shell_write) = new_shell(format!("{}> ", name), args.script_mode);
 
-    select! {
-        // Start logging incoming lines
-        _ = log_loop(client_read, shell_write.clone()) => {},
+    // Start handling events
+    let event_write = shell_write.clone();
+    std::thread::spawn(move || event_thread(client_read, event_write));
 
-        // Start receiving REPL inputs
-        _ = repl_loop(client_write, shell_read, shell_write) => {},
-    };
+    // Start receiving REPL inputs
+    repl_thread(client_write, shell_read, shell_write);
 }
 
 fn parse_socket_addr(to: impl ToSocketAddrs) -> std::io::Result<SocketAddr> {
@@ -138,10 +136,10 @@ impl Display for CliAuthError {
     }
 }
 
-async fn log_loop(mut client_read: ClientRead, mut stdout: ShellWrite) -> ! {
+fn event_thread(mut client_read: ClientRead, mut stdout: ShellWrite) -> ! {
     loop {
-        match client_read.receive_console_log().await {
-            Ok(log) => writeln!(stdout.out(), "{}", log).unwrap(),
+        match client_read.receive() {
+            Ok(Event::ConsoleLog { msg }) => writeln!(stdout.out(), "{}", msg).unwrap(),
             Err(err) => {
                 eprintln!("Connection closed: {}", err);
                 proc_exit::Code::SERVICE_UNAVAILABLE.process_exit();
@@ -150,64 +148,68 @@ async fn log_loop(mut client_read: ClientRead, mut stdout: ShellWrite) -> ! {
     }
 }
 
-async fn repl_loop(
-    mut client_write: ClientWrite,
-    mut stdin: ShellRead,
-    mut stdout: ShellWrite,
-) -> ! {
+fn repl_thread(mut client_write: ClientWrite, mut stdin: ShellRead, mut stdout: ShellWrite) -> ! {
     loop {
-        let line = stdin.read_line().await;
+        let line = stdin.read_line();
         let line = line.trim();
 
-        let result = if let Some(builtin) = line.strip_prefix('!') {
-            if builtin == "help" {
-                writeln!(
-                    stdout.err(),
-                    r#"{} {}
+        let request = match line.strip_prefix('!') {
+            // No builtin prefix, execute as a command
+            None => Some(Request::ExecCommand { cmd: line }),
+
+            // Builtin prefix, match against builtins
+            Some(builtin) => {
+                if builtin == "help" {
+                    writeln!(
+                        stdout.err(),
+                        r#"{} {}
 {}
     {}                   View this help listing
     {}         Enable server console logging
     {}                   Quit this session
     {}        Set a ConVar on the server
     {}     Run a command on the server"#,
-                    env!("CARGO_PKG_NAME").with(Color::DarkGreen),
-                    env!("CARGO_PKG_VERSION"),
-                    "BUILTINS:".with(Color::DarkYellow),
-                    "!help".with(Color::DarkGreen),
-                    "!enable console".with(Color::DarkGreen),
-                    "!quit".with(Color::DarkGreen),
-                    "!set <VAR> <VAL>".with(Color::DarkGreen),
-                    "<COMMAND> [ARGS...]".with(Color::DarkGreen)
-                )
-                .unwrap();
-                Ok(())
-            } else if builtin == "enable console" {
-                client_write.enable_console_logs().await
-            } else if builtin == "quit" {
-                eprintln!();
-                proc_exit::Code::SUCCESS.process_exit();
-            } else if let Some(set_query) = builtin.strip_prefix("set ") {
-                match set_query.find(' ') {
-                    Some(separator_index) => {
-                        let var = set_query[..separator_index].trim();
-                        let val = set_query[separator_index + 1..].trim();
-                        client_write.set_value(var, val).await
+                        env!("CARGO_PKG_NAME").with(Color::DarkGreen),
+                        env!("CARGO_PKG_VERSION"),
+                        "BUILTINS:".with(Color::DarkYellow),
+                        "!help".with(Color::DarkGreen),
+                        "!quit".with(Color::DarkGreen),
+                        "!enable console".with(Color::DarkGreen),
+                        "!set <VAR> <VAL>".with(Color::DarkGreen),
+                        "<COMMAND> [ARGS...]".with(Color::DarkGreen)
+                    )
+                        .unwrap();
+
+                    None
+                } else if builtin == "quit" {
+                    eprintln!();
+                    proc_exit::Code::SUCCESS.process_exit();
+                } else if builtin == "enable console" {
+                    Some(Request::EnableConsoleLogs)
+                } else if let Some(set_query) = builtin.strip_prefix("set ") {
+                    match set_query.find(' ') {
+                        Some(separator_index) => {
+                            let var = set_query[..separator_index].trim();
+                            let val = set_query[separator_index + 1..].trim();
+                            Some(Request::SetValue { var, val })
+                        }
+                        None => {
+                            writeln!(stdout.err(), "Usage: !set <VAR> <VAL>").unwrap();
+                            None
+                        }
                     }
-                    None => {
-                        writeln!(stdout.err(), "Usage: !set <VAR> <VAL>").unwrap();
-                        Ok(())
-                    }
+                } else {
+                    writeln!(stdout.err(), "Unknown builtin.").unwrap();
+                    None
                 }
-            } else {
-                writeln!(stdout.err(), "Unknown builtin.").unwrap();
-                Ok(())
             }
-        } else {
-            client_write.exec_command(line).await
         };
 
-        if let Err(err) = result {
-            writeln!(stdout.err(), "An error occurred: {}", err).unwrap();
+        if let Some(request) = request {
+            let res = client_write.send(request);
+            if let Err(err) = res {
+                writeln!(stdout.err(), "An error occurred: {}", err).unwrap();
+            }
         }
     }
 }

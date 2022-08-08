@@ -155,7 +155,7 @@ impl TryFrom<crate::protocol::Response> for Response {
         match proto_response_type {
             crate::protocol::Response_t::SERVERDATA_RESPONSE_AUTH => {
                 let message: String = value.responseBuf.ok_or(())?;
-                let res = if message.contains("Password incorrect") {
+                let res = if message.contains("Admin password incorrect") {
                     Err(AuthError::InvalidPassword)
                 } else if message.contains("Go away") {
                     Err(AuthError::Banned)

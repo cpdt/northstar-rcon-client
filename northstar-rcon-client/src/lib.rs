@@ -38,15 +38,11 @@ mod protocol;
 
 /// Error type for RCON operations.
 #[derive(Debug, thiserror::Error)]
-#[error(transparent)]
-pub struct Error(RconError);
-
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum RconError {
-    #[error("IO error")]
+pub enum Error {
+    #[error(transparent)]
     Io(#[from] std::io::Error),
 
-    #[error("serialize/deserialize error")]
+    #[error(transparent)]
     Protobuf(#[from] protobuf::Error),
 }
 
@@ -55,15 +51,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 pub use self::client::*;
 use tokio::net::ToSocketAddrs;
-
-impl<T> From<T> for Error
-where
-    T: Into<RconError>,
-{
-    fn from(inner: T) -> Self {
-        Error(inner.into())
-    }
-}
 
 /// Asynchronously connect to an RCON server.
 ///

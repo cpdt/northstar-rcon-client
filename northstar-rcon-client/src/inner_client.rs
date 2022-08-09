@@ -116,6 +116,10 @@ impl InnerClientRead {
 
             let write_len = self.read.read(&mut self.buffer[write_start..]).await?;
 
+            if write_len == 0 {
+                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into());
+            }
+
             // Shrink the buffer again so it only contains written data
             self.buffer.truncate(write_start + write_len);
         }
